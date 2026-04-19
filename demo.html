@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Intelligence - Live Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0f1a;
+  --bg2: #111827;
+  --card: #141c2e;
+  --accent: #3b82f6;
+  --green: #10b981;
+  --gold: #f59e0b;
+  --red: #ef4444;
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --border: #1e293b;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
+.demo-container { max-width:500px; margin:0 auto; padding:20px; min-height:100vh; }
+
+/* Header */
+.demo-header { text-align:center; padding:20px 0 30px; }
+.demo-header h1 { font-size:1.3rem; font-weight:900; }
+.demo-header h1 em { font-style:normal; color:var(--accent); }
+.demo-header p { color:var(--text2); font-size:.8rem; margin-top:4px; }
+
+/* Phase indicator */
+.phase-bar { display:flex; gap:4px; margin-bottom:30px; }
+.phase-dot { flex:1; height:4px; border-radius:2px; background:var(--border); transition:background .5s; }
+.phase-dot.active { background:var(--accent); }
+.phase-dot.done { background:var(--green); }
+
+/* Scene container */
+.scene { display:none; animation:fadeIn .6s ease; }
+.scene.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+/* Signal card */
+.signal-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:16px; }
+.signal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.signal-pair { font-size:1.4rem; font-weight:900; }
+.signal-badge { padding:6px 16px; border-radius:20px; font-weight:700; font-size:.85rem; }
+.signal-badge.buy { background:rgba(16,185,129,.15); color:var(--green); }
+.signal-badge.sell { background:rgba(239,68,68,.15); color:var(--red); }
+.signal-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:.9rem; }
+.signal-row:last-child { border:none; }
+.signal-row .label { color:var(--text2); }
+.signal-row .value { font-weight:700; font-family:'JetBrains Mono',monospace; }
+
+/* AI Filter */
+.filter-list { display:flex; flex-direction:column; gap:8px; }
+.filter-item { display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px; font-size:.85rem; opacity:0; transform:translateX(-20px); transition:all .4s; }
+.filter-item.show { opacity:1; transform:translateX(0); }
+.filter-item .icon { font-size:1.1rem; width:24px; text-align:center; }
+.filter-item .name { flex:1; }
+.filter-item .result { font-weight:700; font-family:'JetBrains Mono',monospace; font-size:.8rem; }
+.filter-item.pass { border-color:rgba(16,185,129,.3); }
+.filter-item.pass .result { color:var(--green); }
+.filter-item.fail { border-color:rgba(239,68,68,.3); }
+.filter-item.fail .result { color:var(--red); }
+
+/* Structure analysis */
+.struct-bar { display:flex; align-items:center; gap:8px; margin:6px 0; }
+.struct-label { width:100px; font-size:.8rem; color:var(--text2); }
+.struct-gauge { flex:1; height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+.struct-fill { height:100%; border-radius:4px; transition:width 1s ease; width:0; }
+.struct-fill.pos { background:var(--green); }
+.struct-fill.neg { background:var(--red); }
+.struct-fill.neutral { background:var(--text2); }
+.struct-val { width:40px; text-align:right; font-family:'JetBrains Mono',monospace; font-size:.8rem; font-weight:700; }
+
+/* Telegram notification */
+.telegram-msg { background:#1a2744; border-radius:12px; padding:16px; margin-bottom:12px; border-left:4px solid var(--accent); font-size:.85rem; line-height:1.7; opacity:0; transform:scale(.95); transition:all .5s; }
+.telegram-msg.show { opacity:1; transform:scale(1); }
+.telegram-msg .tg-header { font-weight:700; margin-bottom:8px; font-size:.95rem; }
+.telegram-msg .tg-row { display:flex; justify-content:space-between; }
+.telegram-msg .tg-label { color:var(--text2); }
+.telegram-msg .tg-value { font-family:'JetBrains Mono',monospace; font-weight:700; }
+.telegram-msg.approved { border-left-color:var(--green); }
+.telegram-msg.closed { border-left-color:var(--gold); }
+
+/* Trade monitor */
+.monitor { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; }
+.monitor-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.monitor-status { padding:4px 12px; border-radius:20px; font-size:.75rem; font-weight:700; }
+.monitor-status.open { background:rgba(59,130,246,.15); color:var(--accent); }
+.monitor-status.tp { background:rgba(16,185,129,.15); color:var(--green); }
+.pnl-display { text-align:center; padding:20px 0; }
+.pnl-display .pnl-value { font-size:2.4rem; font-weight:900; font-family:'JetBrains Mono',monospace; transition:all .3s; }
+.pnl-display .pnl-value.pos { color:var(--green); }
+.pnl-display .pnl-value.neg { color:var(--red); }
+.pnl-display .pnl-label { color:var(--text2); font-size:.8rem; margin-top:4px; }
+.price-bar { display:flex; justify-content:space-between; font-size:.8rem; color:var(--text2); margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+.price-bar .current { color:var(--text); font-weight:700; }
+
+/* Progress bar */
+.progress-wrap { margin:20px 0; }
+.progress-label { display:flex; justify-content:space-between; font-size:.75rem; color:var(--text2); margin-bottom:6px; }
+.progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--green)); border-radius:3px; transition:width .3s; }
+
+/* Scene title */
+.scene-title { font-size:1.1rem; font-weight:900; margin-bottom:4px; }
+.scene-subtitle { color:var(--text2); font-size:.8rem; margin-bottom:20px; }
+.scene-step { color:var(--accent); font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px; }
+
+/* Buttons */
+.btn-row { display:flex; gap:10px; margin-top:24px; }
+.btn { flex:1; padding:14px; border:none; border-radius:12px; font-size:.9rem; font-weight:700; cursor:pointer; transition:all .2s; font-family:inherit; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#2563eb; }
+.btn-skip { background:var(--card); color:var(--text2); border:1px solid var(--border); }
+
+/* Timestamp */
+.timestamp { color:var(--text2); font-size:.7rem; font-family:'JetBrains Mono',monospace; margin-bottom:12px; }
+
+/* Final summary */
+.summary-card { background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(59,130,246,.1)); border:1px solid rgba(16,185,129,.2); border-radius:16px; padding:24px; text-align:center; }
+.summary-card .big { font-size:2.8rem; font-weight:900; color:var(--green); font-family:'JetBrains Mono',monospace; }
+.summary-card .desc { color:var(--text2); font-size:.85rem; margin-top:4px; }
+.summary-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }
+.summary-stat { background:var(--card); border-radius:10px; padding:14px; text-align:center; }
+.summary-stat .val { font-size:1.2rem; font-weight:900; font-family:'JetBrains Mono',monospace; }
+.summary-stat .lbl { font-size:.7rem; color:var(--text2); margin-top:2px; }
+</style>
+</head>
+<body>
+
+<div class="demo-container">
+  <div class="demo-header">
+    <h1><em>FX Intelligence</em> Live Demo</h1>
+    <p>AIがトレードする様子をリアルタイムで体験</p>
+  </div>
+
+  <div class="phase-bar">
+    <div class="phase-dot" id="p1"></div>
+    <div class="phase-dot" id="p2"></div>
+    <div class="phase-dot" id="p3"></div>
+    <div class="phase-dot" id="p4"></div>
+    <div class="phase-dot" id="p5"></div>
+    <div class="phase-dot" id="p6"></div>
+  </div>
+
+  <!-- ===== SCENE 1: Signal Reception ===== -->
+  <div class="scene active" id="scene1">
+    <div class="scene-step">Step 1 / 6</div>
+    <div class="scene-title">TradingView からシグナル受信</div>
+    <div class="scene-subtitle">6つのテクニカル指標 x 4つの時間軸でスコアリング</div>
+    <div class="timestamp">2026-04-21 08:00:03 UTC</div>
+
+    <div class="signal-card">
+      <div class="signal-header">
+        <span class="signal-pair">GOLD</span>
+        <span class="signal-badge buy">BUY</span>
+      </div>
+      <div class="signal-row"><span class="label">Score</span><span class="value" style="color:var(--green)">+42%</span></div>
+      <div class="signal-row"><span class="label">Interval</span><span class="value">4H</span></div>
+      <div class="signal-row"><span class="label">Price</span><span class="value">$3,285.40</span></div>
+      <div class="signal-row"><span class="label">EMA</span><span class="value" style="color:var(--green)">Bullish (+1)</span></div>
+      <div class="signal-row"><span class="label">RSI</span><span class="value">Neutral (52)</span></div>
+      <div class="signal-row"><span class="label">MACD</span><span class="value" style="color:var(--green)">Bull Cross (+2)</span></div>
+      <div class="signal-row"><span class="label">Stochastic</span><span class="value">Neutral (45)</span></div>
+      <div class="signal-row"><span class="label">Bollinger</span><span class="value" style="color:var(--green)">Expansion (+1)</span></div>
+      <div class="signal-row"><span class="label">Ichimoku</span><span class="value" style="color:var(--green)">Above Cloud (+1)</span></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="goScene(2)">AI分析を開始 &rarr;</button></div>
+  </div>
+
+  <!-- ===== SCENE 2: AI Filter ===== -->
+  <div class="scene" id="scene2">
+    <div class="scene-step">Step 2 / 6</div>
+    <div class="scene-title">12のAIフィルタで自動判定</div>
+    <div class="scene-subtitle">負けパターンに該当しないか、1つずつチェック</div>
+
+    <div class="filter-list" id="filterList">
+      <div class="filter-item" data-delay="300"><span class="icon">1</span><span class="name">Score Cap (60%)</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="600"><span class="icon">2</span><span class="name">曜日フィルタ</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="900"><span class="icon">3</span><span class="name">時間帯フィルタ (UTC 08)</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="1200"><span class="icon">4</span><span class="name">スプレッド (1.8 pips)</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="1500"><span class="icon">5</span><span class="name">経済カレンダー</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="1800"><span class="icon">6</span><span class="name">金曜クローズ制限</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="2100"><span class="icon">7</span><span class="name">Interval フィルタ</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="2400"><span class="icon">8</span><span class="name">Stochastic 過買い</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="2700"><span class="icon">9</span><span class="name">MACD 方向一致</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="3000"><span class="icon">10</span><span class="name">レジーム検知</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="3300"><span class="icon">11</span><span class="name">ファンダメンタルズ</span><span class="result">--</span></div>
+      <div class="filter-item" data-delay="3600"><span class="icon">12</span><span class="name">構造分析 (S/R, PA, Fib)</span><span class="result">--</span></div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label"><span>判定中...</span><span id="filterProgress">0/12</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="filterBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="btn-row"><button class="btn btn-primary" id="btn2" onclick="goScene(3)" style="display:none">構造分析の詳細 &rarr;</button></div>
+  </div>
+
+  <!-- ===== SCENE 3: Structure Analysis ===== -->
+  <div class="scene" id="scene3">
+    <div class="scene-step">Step 3 / 6</div>
+    <div class="scene-title">構造分析（プロの視点）</div>
+    <div class="scene-subtitle">インジケータでは見えない「チャートの構造」を分析</div>
+
+    <div class="signal-card">
+      <div class="struct-bar">
+        <span class="struct-label">S/R 水平線</span>
+        <div class="struct-gauge"><div class="struct-fill pos" id="sr-fill" style="width:0%"></div></div>
+        <span class="struct-val" style="color:var(--green)">+1</span>
+      </div>
+      <div class="struct-bar">
+        <span class="struct-label">Price Action</span>
+        <div class="struct-gauge"><div class="struct-fill pos" id="pa-fill" style="width:0%"></div></div>
+        <span class="struct-val" style="color:var(--green)">+2</span>
+      </div>
+      <div class="struct-bar">
+        <span class="struct-label">Fibonacci</span>
+        <div class="struct-gauge"><div class="struct-fill pos" id="fib-fill" style="width:0%"></div></div>
+        <span class="struct-val" style="color:var(--green)">+1</span>
+      </div>
+      <div class="struct-bar">
+        <span class="struct-label">Round Number</span>
+        <div class="struct-gauge"><div class="struct-fill neutral" id="rn-fill" style="width:0%"></div></div>
+        <span class="struct-val" style="color:var(--text2)">0</span>
+      </div>
+      <div class="struct-bar">
+        <span class="struct-label">Swing構造</span>
+        <div class="struct-gauge"><div class="struct-fill pos" id="sw-fill" style="width:0%"></div></div>
+        <span class="struct-val" style="color:var(--green)">+1</span>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+        <div class="struct-bar">
+          <span class="struct-label" style="font-weight:700;color:var(--text)">Total</span>
+          <div class="struct-gauge"><div class="struct-fill pos" id="total-fill" style="width:0%"></div></div>
+          <span class="struct-val" style="color:var(--green);font-size:1rem">+5</span>
+        </div>
+      </div>
+      <p style="color:var(--green);font-size:.85rem;font-weight:700;text-align:center;margin-top:16px">
+        BUY方向と構造が一致 &rarr; エントリー承認
+      </p>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="goScene(4)">Telegram通知を見る &rarr;</button></div>
+  </div>
+
+  <!-- ===== SCENE 4: Telegram Notification ===== -->
+  <div class="scene" id="scene4">
+    <div class="scene-step">Step 4 / 6</div>
+    <div class="scene-title">Telegramに即時通知</div>
+    <div class="scene-subtitle">スマホに通知が届き、AIの判断を確認できます</div>
+
+    <div class="telegram-msg approved" id="tg1">
+      <div class="tg-header">AI Approval: APPROVED</div>
+      <div class="tg-row"><span class="tg-label">Symbol</span><span class="tg-value">GOLD</span></div>
+      <div class="tg-row"><span class="tg-label">Side</span><span class="tg-value" style="color:var(--green)">BUY</span></div>
+      <div class="tg-row"><span class="tg-label">Score</span><span class="tg-value">+42%</span></div>
+      <div class="tg-row"><span class="tg-label">Lot</span><span class="tg-value">0.03</span></div>
+      <div class="tg-row"><span class="tg-label">Entry</span><span class="tg-value">$3,285.40</span></div>
+      <div class="tg-row"><span class="tg-label">SL</span><span class="tg-value" style="color:var(--red)">$3,249.30 (-36.1)</span></div>
+      <div class="tg-row"><span class="tg-label">TP</span><span class="tg-value" style="color:var(--green)">$3,345.60 (+60.2)</span></div>
+      <div class="tg-row"><span class="tg-label">RR</span><span class="tg-value" style="color:var(--gold)">1 : 1.67</span></div>
+      <div class="tg-row"><span class="tg-label">Regime</span><span class="tg-value">Trending (ADX 32)</span></div>
+      <div class="tg-row"><span class="tg-label">Structure</span><span class="tg-value" style="color:var(--green)">+5 (Strong BUY)</span></div>
+      <div style="margin-top:12px;font-size:.75rem;color:var(--text2)">Reason: ALL_12_RULES_PASSED</div>
+    </div>
+
+    <div class="telegram-msg" id="tg2" style="border-left-color:var(--accent)">
+      <div class="tg-header">Order Executed</div>
+      <div class="tg-row"><span class="tg-label">Broker Ref</span><span class="tg-value">#28491057</span></div>
+      <div class="tg-row"><span class="tg-label">Fill Price</span><span class="tg-value">$3,285.50</span></div>
+      <div class="tg-row"><span class="tg-label">Slippage</span><span class="tg-value">0.1 pip</span></div>
+    </div>
+
+    <div class="btn-row"><button class="btn btn-primary" onclick="goScene(5)">トレード監視画面へ &rarr;</button></div>
+  </div>
+
+  <!-- ===== SCENE 5: Trade Monitor ===== -->
+  <div class="scene" id="scene5">
+    <div class="scene-step">Step 5 / 6</div>
+    <div class="scene-title">ポジション監視中</div>
+    <div class="scene-subtitle">30秒ごとにTP/SL到達を自動チェック</div>
+
+    <div class="monitor">
+      <div class="monitor-header">
+        <span style="font-weight:700">GOLD BUY 0.03 lot</span>
+        <span class="monitor-status open" id="monitorStatus">OPEN</span>
+      </div>
+      <div class="pnl-display">
+        <div class="pnl-value pos" id="pnlValue">+0</div>
+        <div class="pnl-label">含み損益 (JPY)</div>
+      </div>
+      <div class="price-bar">
+        <span>SL: $3,249.30</span>
+        <span class="current" id="currentPrice">Now: $3,285.50</span>
+        <span>TP: $3,345.60</span>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label"><span>TP到達まで</span><span id="tpProgress">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="tpBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="timestamp" id="monitorTime">監視中... 08:00:33 UTC</div>
+    <div class="btn-row"><button class="btn btn-primary" id="btn5" onclick="goScene(6)" style="display:none">決済結果を見る &rarr;</button></div>
+  </div>
+
+  <!-- ===== SCENE 6: Result + Learning ===== -->
+  <div class="scene" id="scene6">
+    <div class="scene-step">Step 6 / 6</div>
+    <div class="scene-title">TP到達 &rarr; 自動決済 &rarr; 学習</div>
+    <div class="scene-subtitle">利益確定後、結果を学習して次のトレードに反映</div>
+
+    <div class="telegram-msg closed show" style="border-left-color:var(--green)">
+      <div class="tg-header" style="color:var(--green)">Trade Closed: TP HIT</div>
+      <div class="tg-row"><span class="tg-label">Entry</span><span class="tg-value">$3,285.50</span></div>
+      <div class="tg-row"><span class="tg-label">Exit</span><span class="tg-value">$3,345.60</span></div>
+      <div class="tg-row"><span class="tg-label">P&L</span><span class="tg-value" style="color:var(--green);font-size:1.1rem">+9,030 JPY</span></div>
+      <div class="tg-row"><span class="tg-label">Pips</span><span class="tg-value" style="color:var(--green)">+60.1</span></div>
+      <div class="tg-row"><span class="tg-label">R Multiple</span><span class="tg-value" style="color:var(--green)">+1.67R</span></div>
+      <div class="tg-row"><span class="tg-label">保有時間</span><span class="tg-value">6h 42m</span></div>
+    </div>
+
+    <div class="summary-card" style="margin-top:16px">
+      <div class="big">+9,030</div>
+      <div class="desc">JPY 利益確定</div>
+      <div class="summary-stats">
+        <div class="summary-stat"><div class="val" style="color:var(--green)">+1.67R</div><div class="lbl">リスクリワード</div></div>
+        <div class="summary-stat"><div class="val" style="color:var(--accent)">12/12</div><div class="lbl">AIフィルタ通過</div></div>
+        <div class="summary-stat"><div class="val" style="color:var(--gold)">+5</div><div class="lbl">構造スコア</div></div>
+        <div class="summary-stat"><div class="val" style="color:var(--green)">6h42m</div><div class="lbl">保有時間</div></div>
+      </div>
+    </div>
+
+    <div class="signal-card" style="margin-top:16px;border-color:rgba(59,130,246,.3)">
+      <div style="font-weight:700;margin-bottom:8px;color:var(--accent)">自動学習サイクル</div>
+      <div class="signal-row"><span class="label">パターン記録</span><span class="value" style="color:var(--green)">UTC 08 + GOLD + 4H = WIN</span></div>
+      <div class="signal-row"><span class="label">構造効果</span><span class="value" style="color:var(--green)">S/R support confirmed</span></div>
+      <div class="signal-row"><span class="label">次回への反映</span><span class="value">confidence +0.05</span></div>
+      <div class="signal-row"><span class="label">累計学習</span><span class="value" style="color:var(--accent)">Cycle #3 (22/20 trades)</span></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="location.reload()">最初から見る</button>
+      <button class="btn btn-skip" onclick="window.open('index.html','_self')">LPに戻る</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentScene = 1;
+
+function goScene(n) {
+  document.getElementById('scene' + currentScene).classList.remove('active');
+  document.getElementById('scene' + n).classList.add('active');
+
+  // Phase dots
+  for (let i = 1; i <= 6; i++) {
+    const dot = document.getElementById('p' + i);
+    dot.classList.remove('active', 'done');
+    if (i < n) dot.classList.add('done');
+    if (i === n) dot.classList.add('active');
+  }
+
+  currentScene = n;
+
+  if (n === 2) runFilters();
+  if (n === 3) runStructure();
+  if (n === 4) runTelegram();
+  if (n === 5) runMonitor();
+}
+
+function runFilters() {
+  const items = document.querySelectorAll('.filter-item');
+  const results = [
+    'PASS', 'PASS', 'PASS', 'PASS', 'PASS', 'PASS',
+    'PASS', 'PASS', 'SKIP', 'PASS', 'PASS', 'PASS'
+  ];
+
+  items.forEach((item, i) => {
+    const delay = parseInt(item.dataset.delay);
+    setTimeout(() => {
+      item.classList.add('show');
+      const r = results[i];
+      item.querySelector('.result').textContent = r;
+      item.classList.add(r === 'PASS' ? 'pass' : (r === 'FAIL' ? 'fail' : 'pass'));
+      document.getElementById('filterProgress').textContent = (i+1) + '/12';
+      document.getElementById('filterBar').style.width = ((i+1)/12*100) + '%';
+
+      if (i === items.length - 1) {
+        setTimeout(() => {
+          document.getElementById('btn2').style.display = 'block';
+        }, 500);
+      }
+    }, delay);
+  });
+}
+
+function runStructure() {
+  const fills = [
+    { id: 'sr-fill', pct: 64 },
+    { id: 'pa-fill', pct: 85 },
+    { id: 'fib-fill', pct: 64 },
+    { id: 'rn-fill', pct: 50 },
+    { id: 'sw-fill', pct: 64 },
+    { id: 'total-fill', pct: 85 },
+  ];
+  fills.forEach((f, i) => {
+    setTimeout(() => {
+      document.getElementById(f.id).style.width = f.pct + '%';
+    }, 300 * (i + 1));
+  });
+}
+
+function runTelegram() {
+  setTimeout(() => document.getElementById('tg1').classList.add('show'), 500);
+  setTimeout(() => document.getElementById('tg2').classList.add('show'), 1500);
+}
+
+function runMonitor() {
+  const prices = [3285.5, 3288.2, 3291.0, 3287.5, 3293.8, 3299.2, 3305.1, 3312.4, 3318.7, 3325.3, 3330.1, 3338.5, 3342.2, 3345.6];
+  const pnlPerPip = 150; // 0.03 lot GOLD
+  let step = 0;
+  const totalPips = 60.1;
+
+  const interval = setInterval(() => {
+    if (step >= prices.length) {
+      clearInterval(interval);
+      document.getElementById('monitorStatus').textContent = 'TP HIT';
+      document.getElementById('monitorStatus').classList.remove('open');
+      document.getElementById('monitorStatus').classList.add('tp');
+      document.getElementById('btn5').style.display = 'block';
+      return;
+    }
+
+    const price = prices[step];
+    const pips = (price - 3285.5) / 0.1;
+    const pnl = Math.round(pips * pnlPerPip / 10);
+    const tpPct = Math.min(100, Math.round(pips / totalPips * 100));
+
+    document.getElementById('pnlValue').textContent = (pnl >= 0 ? '+' : '') + pnl.toLocaleString();
+    document.getElementById('pnlValue').className = 'pnl-value ' + (pnl >= 0 ? 'pos' : 'neg');
+    document.getElementById('currentPrice').textContent = 'Now: $' + price.toFixed(2);
+    document.getElementById('tpProgress').textContent = tpPct + '%';
+    document.getElementById('tpBar').style.width = tpPct + '%';
+
+    const minutes = step * 30;
+    const h = 8 + Math.floor(minutes / 60);
+    const m = minutes % 60;
+    document.getElementById('monitorTime').textContent = '監視中... ' + h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0') + ':33 UTC';
+
+    step++;
+  }, 600);
+}
+
+// Init
+document.getElementById('p1').classList.add('active');
+</script>
+
+</body>
+</html>
